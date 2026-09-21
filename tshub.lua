@@ -1,4 +1,4 @@
---[[ TS Hub | loadstring(game:HttpGet("YOUR_RAW_URL"))() ]]
+--[[ TS Hub | loadstring(game:HttpGet("https://raw.githubusercontent.com/hdhbslss/tshub/refs/heads/main/tshub.lua"))() ]]
 if _G.__TSH then return end _G.__TSH = true
 
 local P=game:GetService("Players") local RS=game:GetService("RunService")
