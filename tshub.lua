@@ -1,4 +1,4 @@
---[[ TS Hub | loadstring(game:HttpGet("https://raw.githubusercontent.com/hdhbslss/tshub/refs/heads/main/tshub.lua"))() ]]
+--[[ TS Hub | loadstring(game:HttpGet("YOUR_RAW_URL"))() ]]
 if _G.__TSH then return end _G.__TSH=true
 
 local P=game:GetService("Players")
@@ -8,6 +8,8 @@ local HS=game:GetService("HttpService")
 local LT=game:GetService("Lighting")
 local TS=game:GetService("TeleportService")
 local SS=game:GetService("SoundService")
+local CG=game:GetService("CoreGui")
+local VIM=game:GetService("VirtualInputManager")
 local LP=P.LocalPlayer
 
 local E={
@@ -27,7 +29,8 @@ local E={
  iff=type(isfile)=="function",
 }
 do local ok,n=pcall(function() return identifyexecutor and identifyexecutor() or "unknown" end) E.ex=ok and tostring(n) or "unknown" end
-print("[TS Hub] env Drawing="..tostring(E.dg).." mm="..tostring(E.mm).." m1="..tostring(E.m1).." hk="..tostring(E.hk).." exec="..E.ex)
+print("[TS Hub] ENV:")
+for k,v in pairs(E) do print("  "..k.."="..tostring(v)) end
 
 local repo='https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/'
 local L=loadstring(game:HttpGet(repo..'Library.lua'))()
@@ -54,14 +57,15 @@ local T={
 
 local CFG={
  aim=false,fov=150,sm=15,part="Head",tc=true,wc=false,
- sil=false,rage=false,raf=true,trig=false,
+ sil=false,rage=false,raf=true,trg=false,
  ia=false,rapid=false,rm=3,nr=false,
  esp=false,box=true,nm=true,hp=true,dist=true,trc=false,skel=false,maxd=1000,
+ fovring=false,fovr=150,
  nf=false,nofog=false,fb=false,fovch=false,fovv=90,
  fly=false,fs=80,spd=false,spv=60,nc=false,ij=false,bh=false,
  ar=false,arvs=false,ari=0.25,arr=15,arhl=true,
  aaen=false,aap="None",aat="None",aas=1500,aar=45,
- vjen=false,vje=20,
+ vjen=false,vje=15,
  snd="None",sv=1,
  ab=true,abj=true,
  hub="YOUR_RAW_URL",
@@ -69,20 +73,54 @@ local CFG={
 
 local C={}
 local function KC(k) if C[k] then pcall(function() C[k]:Disconnect() end) C[k]=nil end end
-local D={}
-local G={}
-local function CD()
- for _,d in pairs(D) do pcall(function() d:Remove() end) end
- D={}
- for _,g in pairs(G) do pcall(function() g:Destroy() end) end
- G={}
+
+local ESPFolder
+local function getESPFolder()
+ if ESPFolder and ESPFolder.Parent then return ESPFolder end
+ ESPFolder=Instance.new("Folder")
+ ESPFolder.Name="TSHubESP"
+ ESPFolder.Parent=CG
+ return ESPFolder
 end
-local function ND(c,p)
- if not E.dg then return nil end
- local d=Drawing.new(c)
- for k,v in pairs(p) do d[k]=v end
- d.Visible=false
- return d
+local function clearESP()
+ if ESPFolder then
+  for _,c in ipairs(ESPFolder:GetChildren()) do c:Destroy() end
+ end
+end
+
+local FOVGui,FOVFrame
+local function makeFOVRing()
+ if FOVGui and FOVGui.Parent then return end
+ FOVGui=Instance.new("ScreenGui")
+ FOVGui.Name="TSHubFOV"
+ FOVGui.ResetOnSpawn=false
+ FOVGui.IgnoreGuiInset=true
+ FOVGui.Parent=CG
+ FOVFrame=Instance.new("Frame")
+ FOVFrame.Size=UDim2.new(0,0,0,0)
+ FOVFrame.Position=UDim2.new(0.5,0,0.5,0)
+ FOVFrame.AnchorPoint=Vector2.new(0.5,0.5)
+ FOVFrame.BackgroundTransparency=1
+ FOVFrame.BorderSizePixel=0
+ FOVFrame.Parent=FOVGui
+ local stroke=Instance.new("UIStroke")
+ stroke.Name="stroke"
+ stroke.Color=Color3.fromRGB(120,200,255)
+ stroke.Thickness=1
+ stroke.Transparency=0.3
+ stroke.Parent=FOVFrame
+ local corner=Instance.new("UICorner")
+ corner.CornerRadius=UDim.new(1,0)
+ corner.Parent=FOVFrame
+end
+local function updateFOVRing()
+ if not CFG.fovring then
+  if FOVFrame then FOVFrame.Visible=false end
+  return
+ end
+ if not FOVFrame then makeFOVRing() end
+ FOVFrame.Visible=true
+ FOVFrame.Size=UDim2.new(0,CFG.fovr*2,0,CFG.fovr*2)
 end
 
 local R={}
@@ -123,21 +161,13 @@ function R.am(t)
 end
 function R.nt(m,d) L:Notify(tostring(m),d or 2) end
 
-local bbf
-local function ebf()
- if bbf and bbf.Parent then return bbf end
- bbf=Instance.new("Folder")
- bbf.Name="TSHubESP"
- bbf.Parent=game:GetService("CoreGui")
- return bbf
-end
-
 local function sESP()
  if C.esp then return end
  C.esp=RS.RenderStepped:Connect(function()
-  CD()
+  clearESP()
   if not CFG.esp then return end
   local cam=workspace.CurrentCamera
+  local folder=getESPFolder()
   for _,pl in ipairs(P:GetPlayers()) do
    if pl==LP then continue end
    local h,r,hd=R.cp(pl)
@@ -147,84 +177,77 @@ local function sESP()
    if dist>CFG.maxd then continue end
    local en=R.en(pl)
    local col=en and Color3.fromRGB(255,70,70) or Color3.fromRGB(70,255,120)
-   if E.dg then
-    local tp,to=R.w2s(r.Position+Vector3.new(0,3,0))
-    local bp,bo=R.w2s(r.Position-Vector3.new(0,3,0))
-    if to and bo then
-     local H=math.abs(bp.Y-tp.Y)
-     local Wd=H*0.5
-     if CFG.box then
-      local d=ND("Square",{Size=Vector2.new(Wd,H),Position=Vector2.new(tp.X-Wd/2,tp.Y),Color=col,Thickness=1,Filled=false,Visible=true})
-      if d then table.insert(D,d) end
-     end
-     if CFG.nm then
-      local d=ND("Text",{Text=pl.Name,Position=Vector2.new(tp.X,tp.Y-16),Size=14,Center=true,Color=Color3.fromRGB(255,255,255),Outline=true,Visible=true})
-      if d then table.insert(D,d) end
-     end
-     if CFG.hp then
-      local hp=math.clamp(h.Health/h.MaxHealth,0,1)
-      local d=ND("Square",{Size=Vector2.new(3,H*hp),Position=Vector2.new(tp.X-Wd/2-6,bp.Y-H*hp),Color=Color3.fromRGB(80,255,80),Thickness=1,Filled=true,Visible=true})
-      if d then table.insert(D,d) end
-     end
-     if CFG.dist then
-      local d=ND("Text",{Text=string.format("[%d]",math.floor(dist)),Position=Vector2.new(tp.X,bp.Y+4),Size=12,Center=true,Color=Color3.fromRGB(200,200,200),Outline=true,Visible=true})
-      if d then table.insert(D,d) end
-     end
-     if CFG.trc then
-      local d=ND("Line",{From=Vector2.new(cam.ViewportSize.X/2,cam.ViewportSize.Y),To=Vector2.new(tp.X,tp.Y),Color=col,Thickness=1,Visible=true})
-      if d then table.insert(D,d) end
-     end
-     if CFG.skel then
-      local names={"Head","UpperTorso","LowerTorso","LeftHand","RightHand","LeftFoot","RightFoot"}
-      local pts={}
-      for _,n in ipairs(names) do
-       local p=pl.Character:FindFirstChild(n)
-       if p then local s,o=R.w2s(p.Position) if o then pts[n]=s end end
-      end
-      for _,pr in ipairs({{"Head","UpperTorso"},{"UpperTorso","LowerTorso"},{"UpperTorso","LeftHand"},{"UpperTorso","RightHand"},{"LowerTorso","LeftFoot"},{"LowerTorso","RightFoot"}}) do
-       local a,b=pts[pr[1]],pts[pr[2]]
-       if a and b then
-        local d=ND("Line",{From=a,To=b,Color=col,Thickness=1,Visible=true})
-        if d then table.insert(D,d) end
-       end
-      end
-     end
-    end
-   else
-    local folder=ebf()
+   if CFG.box then
+    local hl=Instance.new("Highlight")
+    hl.Name="box"
+    hl.FillColor=col
+    hl.OutlineColor=col
+    hl.FillTransparency=1
+    hl.OutlineTransparency=0
+    hl.Adornee=pl.Character
+    hl.Parent=folder
+   end
+   if CFG.nm or CFG.hp or CFG.dist then
     local bg=Instance.new("BillboardGui")
-    bg.Name="esp_"..pl.Name
-    bg.Size=UDim2.new(0,200,0,50)
+    bg.Name="info"
+    bg.Size=UDim2.new(0,180,0,40)
     bg.StudsOffsetWorldSpace=Vector3.new(0,3,0)
     bg.AlwaysOnTop=true
     bg.Adornee=r
     bg.Parent=folder
     if CFG.nm then
      local lbl=Instance.new("TextLabel")
-     lbl.Size=UDim2.new(1,0,0,20)
+     lbl.Size=UDim2.new(1,0,0,16)
      lbl.BackgroundTransparency=1
-     lbl.Text=pl.Name..(CFG.dist and string.format(" [%d]",math.floor(dist)) or "")
+     lbl.Text=pl.Name
      lbl.TextColor3=col
      lbl.TextStrokeTransparency=0
      lbl.TextSize=14
      lbl.Font=Enum.Font.GothamBold
      lbl.Parent=bg
     end
-    if CFG.box then
-     local hl=Instance.new("Highlight")
-     hl.FillColor=col
-     hl.OutlineColor=col
-     hl.FillTransparency=0.85
-     hl.OutlineTransparency=0
-     hl.Adornee=pl.Character
-     hl.Parent=bg
+    if CFG.hp then
+     local barBg=Instance.new("Frame")
+     barBg.Size=UDim2.new(0.8,0,0,4)
+     barBg.Position=UDim2.new(0.1,0,0,18)
+     barBg.BackgroundColor3=Color3.fromRGB(40,40,40)
+     barBg.BorderSizePixel=0
+     barBg.Parent=bg
+     local bar=Instance.new("Frame")
+     local hp=math.clamp(h.Health/h.MaxHealth,0,1)
+     bar.Size=UDim2.new(hp,0,1,0)
+     bar.BackgroundColor3=Color3.fromRGB(80,255,80)
+     bar.BorderSizePixel=0
+     bar.Parent=barBg
     end
-    table.insert(G,bg)
+    if CFG.dist then
+     local lbl=Instance.new("TextLabel")
+     lbl.Size=UDim2.new(1,0,0,14)
+     lbl.Position=UDim2.new(0,0,0,24)
+     lbl.BackgroundTransparency=1
+     lbl.Text=string.format("[%d]",math.floor(dist))
+     lbl.TextColor3=Color3.fromRGB(200,200,200)
+     lbl.TextStrokeTransparency=0.5
+     lbl.TextSize=12
+     lbl.Font=Enum.Font.Gotham
+     lbl.Parent=bg
+    end
    end
   end
  end)
 end
-local function stESP() KC("esp") CD() end
+local function stESP() KC("esp") clearESP() end
+
+local fovConn
+local function sFOVRing()
+ if fovConn then return end
+ makeFOVRing()
+ fovConn=RS.RenderStepped:Connect(function() updateFOVRing() end)
+end
+local function stFOVRing()
+ if fovConn then fovConn:Disconnect() fovConn=nil end
+ if FOVFrame then FOVFrame.Visible=false end
+end
 
 local function tgt(fov,igf)
  local cam=workspace.CurrentCamera
@@ -277,11 +300,7 @@ local function sSIL()
   local t=tgt(nil,true)
   if not t then return end
   local cam=workspace.CurrentCamera
-  local ctr=Vector2.new(cam.ViewportSize.X/2,cam.ViewportSize.Y/2)
-  local s=R.w2s(t.Position)
-  local d=s-ctr
-  if E.mm then mousemoverel(d.X,d.Y)
-  else cam.CFrame=CFrame.lookAt(cam.CFrame.Position,t.Position) end
+  cam.CFrame=CFrame.lookAt(cam.CFrame.Position,t.Position)
  end)
 end
 local function stSIL() KC("sil") end
@@ -289,11 +308,12 @@ local function stSIL() KC("sil") end
 local function sTRG()
  if C.trg then return end
  C.trg=RS.RenderStepped:Connect(function()
-  if not CFG.trig then return end
+  if not CFG.trg then return end
   local t=tgt(20,true)
   if t then
-   if E.m1 then mouse1click()
-   else pcall(function() game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0,0,true,game,0) end) end
+   pcall(function() VIM:SendMouseButtonEvent(0,0,0,true,game,0) end)
+   task.wait(0.02)
+   pcall(function() VIM:SendMouseButtonEvent(0,0,0,false,game,0) end)
   end
  end)
 end
@@ -306,12 +326,11 @@ local function sRG()
   local t=tgt(nil,true)
   if not t then return end
   local cam=workspace.CurrentCamera
-  local ctr=Vector2.new(cam.ViewportSize.X/2,cam.ViewportSize.Y/2)
-  local s=R.w2s(t.Position)
-  local d=s-ctr
-  if E.mm then mousemoverel(d.X,d.Y)
-  else cam.CFrame=CFrame.lookAt(cam.CFrame.Position,t.Position) end
-  if CFG.raf and E.m1 then mouse1click() end
+  cam.CFrame=CFrame.lookAt(cam.CFrame.Position,t.Position)
+  if CFG.raf then
+   pcall(function() VIM:SendMouseButtonEvent(0,0,0,true,game,0) end)
+   pcall(function() VIM:SendMouseButtonEvent(0,0,0,false,game,0) end)
+  end
  end)
 end
 local function stRG() KC("rage") end
@@ -466,9 +485,7 @@ local function sNF()
   if not CFG.nf then return end
   for _,c in ipairs(LT:GetChildren()) do
    if c:IsA("ColorCorrectionEffect") then
-    c.Brightness=0
-    c.Contrast=0
-    c.Saturation=0
+    c.Brightness=0 c.Contrast=0 c.Saturation=0
    end
   end
  end)
@@ -478,10 +495,7 @@ local function stNF() KC("nf") end
 local function sNG()
  if C.nog then return end
  C.nog=RS.Heartbeat:Connect(function()
-  if CFG.nofog then
-   LT.FogEnd=1e6
-   LT.FogStart=1e6
-  end
+  if CFG.nofog then LT.FogEnd=1e6 LT.FogStart=1e6 end
  end)
 end
 local function stNG() KC("nog") end
@@ -543,8 +557,7 @@ local function sVS()
  end)
 end
 local function stVS()
- KC("vs")
- VS.act=false
+ KC("vs") VS.act=false
  local ch=LP.Character
  if ch and VS.orig then
   local h=ch:FindFirstChild("HumanoidRootPart")
@@ -669,8 +682,11 @@ end)
 local CDIR="TSHub/configs"
 local ALF="TSHub/_autoload.txt"
 local CM={}
+local has_wf=E.wf
+local has_rf=E.rf
+local has_iff=E.iff
 function CM.ed()
- if not E.wf then return end
+ if not has_wf then return end
  pcall(function()
   if makefolder and not isfolder("TSHub") then makefolder("TSHub") end
   if makefolder and not isfolder(CDIR) then makefolder(CDIR) end
@@ -689,36 +705,47 @@ function CM.ls()
  return o
 end
 function CM.sv(n)
+ if not has_wf then R.nt("No writefile",2) return end
  if not n or n=="" then R.nt("Name required",2) return end
  n=n:gsub("%s+","_"):gsub("[^%w_%-]","")
  CM.ed()
- local ok=pcall(function() SM:Save(n) end)
+ local cf={}
+ for k,v in pairs(CFG) do cf[k]=v end
+ local ok=pcall(function()
+  writefile(CDIR.."/"..n..".json", HS:JSONEncode(cf))
+ end)
  R.nt(ok and ("Saved: "..n) or "Save failed",2)
 end
 function CM.ld(n)
+ if not has_rf or not has_iff then R.nt("No readfile",2) return end
  if not n or n=="" then return end
- local ok=pcall(function() SM:Load(n) end)
- R.nt(ok and ("Loaded: "..n) or "Load failed",2)
+ local p=CDIR.."/"..n..".json"
+ if not isfile(p) then R.nt("Not found",2) return end
+ local ok,c=pcall(function() return readfile(p) end)
+ if not ok or not c then R.nt("Read failed",2) return end
+ local ok2,data=pcall(function() return HS:JSONDecode(c) end)
+ if not ok2 or not data then R.nt("Parse failed",2) return end
+ for k,v in pairs(data) do
+  if CFG[k]~=nil then CFG[k]=v end
+ end
+ R.nt("Loaded: "..n,2)
 end
 function CM.dl(n)
  if not n or n=="" then return end
+ local p=CDIR.."/"..n..".json"
  pcall(function()
-  if SM.Delete then SM:Delete(n)
-  elseif delfile and isfile then
-   local p=CDIR.."/"..n..".json"
-   if isfile(p) then delfile(p) end
-  end
+  if delfile and isfile and isfile(p) then delfile(p) end
  end)
  R.nt("Deleted: "..n,2)
 end
 function CM.sl(n)
- if not E.wf then return end
+ if not has_wf then return end
  CM.ed()
  pcall(function() writefile(ALF,n or "") end)
  R.nt(n=="" and "Cleared" or ("Auto load: "..n),2)
 end
 function CM.gl()
- if not E.rf or not E.iff then return "" end
+ if not has_rf or not has_iff then return "" end
  if not isfile(ALF) then return "" end
  local ok,c=pcall(function() return readfile(ALF) end)
  if not ok or not c then return "" end
@@ -740,9 +767,9 @@ CL:AddSlider('a6',{Text='Smooth',Default=15,Min=1,Max=100,Rounding=0,Callback=fu
 
 local CR=T.C:AddRightGroupbox('Silent / Rage / Trigger')
 CR:AddToggle('b1',{Text='Silent Aim',Default=false,Callback=function(v) CFG.sil=v if v then sSIL() else stSIL() end end})
-CR:AddToggle('b2',{Text='Rage (safe)',Default=false,Callback=function(v) CFG.rage=v if v then sRG() else stRG() end end})
+CR:AddToggle('b2',{Text='Ragebot',Default=false,Callback=function(v) CFG.rage=v if v then sRG() else stRG() end end})
 CR:AddToggle('b3',{Text='AutoFire',Default=true,Callback=function(v) CFG.raf=v end})
-CR:AddToggle('b5',{Text='Trigger Bot',Default=false,Callback=function(v) CFG.trig=v if v then sTRG() else stTRG() end end})
+CR:AddToggle('b5',{Text='Trigger Bot',Default=false,Callback=function(v) CFG.trg=v if v then sTRG() else stTRG() end end})
 
 local WL=T.C:AddLeftGroupbox('Weapon')
 WL:AddToggle('c1',{Text='Inf Ammo',Default=false,Callback=function(v) CFG.ia=v if v then sIA() else stIA() end end})
@@ -766,6 +793,8 @@ VR:AddToggle('e2',{Text='No Fog',Default=false,Callback=function(v) CFG.nofog=v 
 VR:AddToggle('e3',{Text='Fullbright',Default=false,Callback=function(v) CFG.fb=v if v then sFB() else stFB() end end})
 VR:AddToggle('e4',{Text='FOV Changer',Default=false,Callback=function(v) CFG.fovch=v aFOV() end})
 VR:AddSlider('e5',{Text='FOV Value',Default=90,Min=60,Max=140,Rounding=0,Callback=function(v) CFG.fovv=v aFOV() end})
+VR:AddToggle('e6',{Text='FOV Ring',Default=false,Callback=function(v) CFG.fovring=v if v then sFOVRing() else stFOVRing() end end})
+VR:AddSlider('e7',{Text='Ring Size',Default=150,Min=50,Max=500,Rounding=0,Callback=function(v) CFG.fovr=v end})
 
 local ML=T.M:AddLeftGroupbox('Fly / Speed')
 ML:AddToggle('f1',{Text='Fly',Default=false,Callback=function(v) CFG.fly=v if v then sFLY() else stFLY() end end})
@@ -782,14 +811,14 @@ local ALG=T.AR:AddLeftGroupbox('Anti-Rage')
 ALG:AddToggle('h1',{Text='Enable Anti-Rage',Default=false,Callback=function(v) CFG.ar=v if v then sAR() else stAR() end end})
 ALG:AddToggle('h2',{Text='Health Lock',Default=true,Callback=function(v) CFG.arhl=v end})
 
-local ARR=T.AR:AddRightGroupbox('Void Spam (safe)')
+local ARR=T.AR:AddRightGroupbox('Void Spam')
 ARR:AddToggle('i1',{Text='Enable Void Spam',Default=false,Callback=function(v) if v then sVS() R.nt('VS ON',2) else stVS() R.nt('VS OFF',2) end end})
-ARR:AddSlider('i2',{Text='Interval (ms)',Default=250,Min=250,Max=1000,Rounding=0,Callback=function(v) CFG.ari=v/1000 end})
-ARR:AddSlider('i3',{Text='Range (studs)',Default=15,Min=2,Max=15,Rounding=0,Callback=function(v) CFG.arr=v end})
+ARR:AddSlider('i2',{Text='Interval (ms)',Default=250,Min=50,Max=1000,Rounding=0,Callback=function(v) CFG.ari=v/1000 end})
+ARR:AddSlider('i3',{Text='Range (studs)',Default=15,Min=2,Max=100,Rounding=0,Callback=function(v) CFG.arr=v end})
 
-local SJL=T.ST:AddLeftGroupbox('Void Jitter (safe)')
+local SJL=T.ST:AddLeftGroupbox('Void Jitter')
 SJL:AddToggle('k1',{Text='Enable Void Jitter',Default=false,Callback=function(v) CFG.vjen=v if v then sVJ() sBS() else stVJ() wS() end end})
-SJL:AddSlider('k2',{Text='Radius',Default=20,Min=0,Max=20,Rounding=0,Callback=function(v) CFG.vje=v end})
+SJL:AddSlider('k2',{Text='Radius',Default=15,Min=0,Max=20,Rounding=0,Callback=function(v) CFG.vje=v end})
 SJL:AddDropdown('k3',{Values={'None','Whoosh','Glitch','Bass','Pulse','Static'},Default=1,Text='Sound',Callback=function(v) CFG.snd=v if CFG.vjen then sBS() end end})
 
 local SJR=T.ST:AddRightGroupbox('Anti-Aim')
@@ -803,7 +832,7 @@ local ADL=T.AD:AddLeftGroupbox('Auto Load / Hop')
 ADL:AddInput('m1',{Text='Hub URL',Default=CFG.hub,Placeholder='raw github url',Callback=function(v) CFG.hub=v end})
 ADL:AddToggle('m2',{Text='Install Auto Load',Default=false,Callback=function(v)
  if v then
-  if not E.wf then R.nt("Need writefile",3) return end
+  if not has_wf then R.nt("Need writefile",3) return end
   pcall(function()
    if makefolder and not isfolder("autoexec") then makefolder("autoexec") end
    writefile("autoexec/tshub.lua",string.format([[loadstring(game:HttpGet("%s"))()]],CFG.hub))
@@ -887,14 +916,11 @@ end)
 local SR=T.CF:AddRightGroupbox('UI')
 SR:AddLabel('Menu'):AddKeyPicker('p1',{Default='RightShift',Text='Menu',Mode='Toggle',NoUI=false})
 L.ToggleKeybind=Options.p1
-SR:AddButton('Print ENV (debug)',function()
- print("[TS Hub] ENV:")
- for k,v in pairs(E) do print("  "..k.."="..tostring(v)) end
-end)
 SR:AddButton('Unload',function()
  stESP() stAIM() stSIL() stTRG() stRG() stIA() stRP() stNR()
  stFLY() stSPD() stNC() stIJ() stBH() stNF() stNG() stFB()
- stAR() stVS() stVJ() stAA() wS() CD()
+ stAR() stVS() stVJ() stAA() stFOVRing() wS() clearESP()
+ pcall(function() if FOVGui then FOVGui:Destroy() end end)
  L:Unload() _G.__TSH=false
 end)
 
